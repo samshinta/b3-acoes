@@ -1,0 +1,5 @@
+{
+  "name": "B3-acoes",
+  "description": "A sophisticated financial analysis dashboard that leverages Gemini 3 Pro to simulate Python-based stock forecasting and market sentiment analysis.",
+  "requestFramePermissions": []
+}
