@@ -60,15 +60,15 @@ const AppContent: React.FC = () => {
             <ul className="space-y-4">
               <li className="flex gap-4">
                 <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white flex-none">1</span>
-                <p className="text-xs text-slate-300">Vá em <b>Settings</b> > <b>Variables and Secrets</b>.</p>
+                <p className="text-xs text-slate-300">Vá em <b>Settings</b> &gt; <b>Variables and Secrets</b>.</p>
               </li>
               <li className="flex gap-4">
                 <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white flex-none">2</span>
-                <p className="text-xs text-slate-300">Certifique-se de que o nome é <code className="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-300 font-bold">VITE_API_KEY</code> (o prefixo VITE_ é obrigatório).</p>
+                <p className="text-xs text-slate-300">Certifique-se de que o nome é <code className="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-300 font-bold">VITE_API_KEY</code>.</p>
               </li>
               <li className="flex gap-4">
                 <span className="w-6 h-6 rounded-lg bg-rose-500/20 flex items-center justify-center text-[10px] font-bold text-rose-400 flex-none ring-1 ring-rose-500/30">3</span>
-                <p className="text-xs text-rose-300 font-bold">Vá na aba "Deployments" e clique em "Create new deployment" ou "Retry" no último build.</p>
+                <p className="text-xs text-rose-300 font-bold">Vá na aba "Deployments" e clique em "Retry deployment" no último build.</p>
               </li>
             </ul>
           </div>
@@ -79,10 +79,6 @@ const AppContent: React.FC = () => {
           >
             Verificar Novamente
           </button>
-          
-          <p className="mt-6 text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-            Documentação: <a href="https://ai.google.dev/gemini-api/docs/api-key" target="_blank" className="text-slate-500 hover:text-cyan-500 underline">Obter Chave do Gemini</a>
-          </p>
         </div>
       </div>
     );
