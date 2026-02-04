@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { performStockAnalysis } from './services/geminiService';
 import { AnalysisResult, AppStatus } from './types';
@@ -7,8 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './components/AuthPage';
 
 /**
- * QuantAI Predictor - v2.6.0
- * Gestão de chaves API e interface principal.
+ * QuantAI Predictor - v2.7.1
  */
 
 const AppContent: React.FC = () => {
@@ -19,24 +17,40 @@ const AppContent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean>(true);
 
-  // Verifica se a chave API está disponível ou se precisa ser selecionada
+  // Verificação robusta da existência da chave Gemini
   useEffect(() => {
     const checkApiKey = async () => {
-      const keyExists = !!process.env.API_KEY;
-      if (!keyExists && (window as any).aistudio) {
-        const selected = await (window as any).aistudio.hasSelectedApiKey();
-        setHasApiKey(selected);
+      // Prioridade total para a variável de ambiente injetada
+      if (process.env.API_KEY && process.env.API_KEY !== 'undefined' && process.env.API_KEY.length > 5) {
+        setHasApiKey(true);
+        return;
+      }
+
+      const aiStudio = (window as any).aistudio;
+      if (aiStudio) {
+        try {
+          const selected = await aiStudio.hasSelectedApiKey();
+          setHasApiKey(selected);
+        } catch (e) {
+          setHasApiKey(false);
+        }
       } else {
-        setHasApiKey(keyExists);
+        setHasApiKey(false);
       }
     };
     checkApiKey();
   }, []);
 
   const handleSelectKey = async () => {
-    if ((window as any).aistudio) {
-      await (window as any).aistudio.openSelectKey();
-      setHasApiKey(true); // Assume sucesso conforme instruções
+    const aiStudio = (window as any).aistudio;
+    if (aiStudio) {
+      try {
+        await aiStudio.openSelectKey();
+        // REGRA: Assume sucesso imediatamente para destravar o UI
+        setHasApiKey(true);
+      } catch (e) {
+        console.error("Erro ao abrir seletor:", e);
+      }
     }
   };
 
@@ -53,7 +67,7 @@ const AppContent: React.FC = () => {
       setStatus(AppStatus.SUCCESS);
     } catch (err: any) {
       console.error(err);
-      if (err.message?.includes("Requested entity was not found")) {
+      if (err.message?.includes("Requested entity was not found") || err.message?.includes("API_KEY")) {
         setHasApiKey(false);
       }
       setError(err.message || 'Falha na análise quantitativa.');
@@ -74,7 +88,6 @@ const AppContent: React.FC = () => {
 
   if (!user) return <AuthPage />;
 
-  // Se não houver chave API configurada, mostra tela de setup
   if (!hasApiKey) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
@@ -82,9 +95,9 @@ const AppContent: React.FC = () => {
           <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-500/20">
             <i className="fa-solid fa-key text-amber-500 text-3xl"></i>
           </div>
-          <h2 className="text-2xl font-black text-white mb-4 italic">Chave API Necessária</h2>
+          <h2 className="text-2xl font-black text-white mb-4 italic uppercase tracking-tighter">Chave API Necessária</h2>
           <p className="text-slate-400 text-sm leading-relaxed mb-8">
-            Para realizar previsões com o modelo <b>Gemini 3 Pro</b>, você precisa selecionar uma chave API válida.
+            Para realizar previsões com o <b>Gemini 3 Pro</b> e executar lógica <b>Python</b>, selecione uma chave API vinculada a um projeto com faturamento ativo.
           </p>
           <button 
             onClick={handleSelectKey}
@@ -94,7 +107,7 @@ const AppContent: React.FC = () => {
             CONFIGURAR CHAVE API
           </button>
           <p className="mt-6 text-[10px] text-slate-600 uppercase tracking-widest font-bold">
-            Requer um projeto com faturamento ativo em <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-cyan-500 underline">ai.google.dev</a>
+            Consulte a <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-cyan-500 underline">documentação de faturamento</a>
           </p>
         </div>
       </div>
@@ -113,7 +126,7 @@ const AppContent: React.FC = () => {
               <h1 className="text-xl font-black text-white tracking-tighter italic leading-none">
                 QuantAI<span className="text-cyan-400">Predictor</span>
               </h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Dashboard Analítico</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Python Enhanced Dashboard</p>
             </div>
           </div>
           <div className="flex items-center gap-6">
@@ -124,7 +137,6 @@ const AppContent: React.FC = () => {
             <button 
               onClick={() => logout()}
               className="w-10 h-10 rounded-xl border border-slate-800 flex items-center justify-center text-slate-500 hover:text-rose-400 hover:border-rose-400/30 transition-all"
-              title="Encerrar Sessão"
             >
               <i className="fa-solid fa-right-from-bracket"></i>
             </button>
@@ -148,12 +160,12 @@ const AppContent: React.FC = () => {
             <button 
               type="submit"
               disabled={status === AppStatus.LOADING}
-              className="bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-800 text-slate-950 font-black px-8 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-cyan-500/20 active:scale-95"
+              className="bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-800 text-slate-950 font-black px-8 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-cyan-500/20"
             >
               {status === AppStatus.LOADING ? (
                 <>
-                  <i className="fa-solid fa-brain animate-pulse text-lg"></i>
-                  PROCESSANDO...
+                  <i className="fa-solid fa-microchip animate-spin text-lg"></i>
+                  EXECUTANDO PYTHON...
                 </>
               ) : (
                 <>
@@ -213,14 +225,14 @@ const AppContent: React.FC = () => {
                 result.sentiment === 'Bearish' ? 'bg-rose-500/5 border-rose-500/20 text-rose-400' : 
                 'bg-slate-800/50 border-slate-700 text-slate-400'
               }`}>
-                <p className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">Sentimento de Mercado</p>
+                <p className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">Sentimento IA</p>
                 <div className="flex items-center justify-between">
                   <h4 className="text-3xl font-black italic uppercase tracking-tighter">{result.sentiment}</h4>
                   <i className={`fa-solid ${
                     result.sentiment === 'Bullish' ? 'fa-arrow-trend-up' : 
                     result.sentiment === 'Bearish' ? 'fa-arrow-trend-down' : 
                     'fa-minus'
-                  } text-4xl opacity-20 group-hover:scale-110 transition-transform duration-500`}></i>
+                  } text-4xl opacity-20 transition-transform duration-500`}></i>
                 </div>
               </div>
 
@@ -240,27 +252,26 @@ const AppContent: React.FC = () => {
               <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] shadow-xl">
                 <div className="flex items-center gap-3 mb-6">
                   <i className="fa-brands fa-python text-amber-400 text-lg"></i>
-                  <h3 className="text-[11px] font-black text-white uppercase italic tracking-widest">Lógica Computacional</h3>
+                  <h3 className="text-[11px] font-black text-white uppercase italic tracking-widest">Lógica Python Aplicada</h3>
                 </div>
-                <pre className="bg-slate-950 rounded-2xl p-5 text-[10px] font-mono text-cyan-300 overflow-x-auto border border-slate-800 scrollbar-thin scrollbar-thumb-slate-800">
+                <pre className="bg-slate-950 rounded-2xl p-5 text-[10px] font-mono text-cyan-300 overflow-x-auto border border-slate-800">
                   {result.pythonLogic}
                 </pre>
               </div>
 
               {result.sources && result.sources.length > 0 && (
                 <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] shadow-xl">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Fontes (Grounding)</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Fontes de Grounding</p>
                   <div className="space-y-3">
                     {result.sources.map((source, idx) => (
                       <a 
                         key={idx} 
                         href={source.uri} 
                         target="_blank" 
-                        rel="noopener noreferrer"
                         className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/50 transition-all group"
                       >
                         <span className="text-[11px] font-bold text-slate-400 group-hover:text-cyan-400 truncate max-w-[180px]">{source.title}</span>
-                        <i className="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-600 group-hover:text-cyan-500"></i>
+                        <i className="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-600"></i>
                       </a>
                     ))}
                   </div>
@@ -272,7 +283,7 @@ const AppContent: React.FC = () => {
       </main>
       
       <footer className="max-w-7xl mx-auto p-8 text-center">
-        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-[0.5em]">QuantAI Engine v2.6 • Powered by Gemini 3 Pro</p>
+        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-[0.5em]">QuantAI Predictor v2.7.1 • Powered by Gemini 3 Pro & Python Interpreter</p>
       </footer>
     </div>
   );
