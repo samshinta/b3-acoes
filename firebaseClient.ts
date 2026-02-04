@@ -4,7 +4,7 @@ import { getAuth, Auth } from "firebase/auth";
 
 /**
  * QuantAI Firebase Client
- * Inicialização centralizada utilizando versões fixas do CDN oficial.
+ * Inicialização centralizada utilizando versões fixas v10.13.2 via esm.sh.
  */
 
 const DEFAULT_CONFIG = {
@@ -39,18 +39,19 @@ let auth: Auth | undefined;
 
 if (isFirebaseConfigured) {
   try {
-    // Inicializa o app uma única vez
+    // Inicializa o app uma única vez ou recupera o existente.
+    // O erro 'Component auth has not been registered' acontece quando há conflito de versões
+    // entre 'firebase/app' e 'firebase/auth'. O importmap agora garante que ambos sejam 10.13.2.
     const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     
-    // Agora que o importmap está fixo e consistente, o getAuth registrará o componente corretamente
     auth = getAuth(app);
     
-    console.log("✅ QuantAI: Firebase Auth inicializado.");
+    console.log("✅ QuantAI: Firebase Auth inicializado com sucesso.");
   } catch (error) {
     console.error("❌ QuantAI: Erro crítico na inicialização do Firebase:", error);
   }
 } else {
-  console.warn("⚠️ QuantAI: Modo Demo ativo. Configurações de ambiente não encontradas.");
+  console.warn("⚠️ QuantAI: Modo Demo ativo. Verifique as variáveis de ambiente.");
 }
 
 export { auth };
