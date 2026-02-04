@@ -1,10 +1,14 @@
-
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { performStockAnalysis } from './services/geminiService';
 import { AnalysisResult, AppStatus } from './types';
 import StockChart from './components/StockChart';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './components/AuthPage';
+
+/**
+ * QuantAI Predictor - v2.5.3
+ * Interface corrigida para evitar erros de sintaxe no compilador esbuild do Cloudflare.
+ */
 
 const AppContent: React.FC = () => {
   const { user, logout, loading: authLoading } = useAuth();
@@ -12,15 +16,6 @@ const AppContent: React.FC = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
-  const [isKeyMissing, setIsKeyMissing] = useState(false);
-
-  // Verificação inicial de sanidade da chave
-  useEffect(() => {
-    const key = window.process?.env?.API_KEY;
-    if (!key || key === 'undefined' || key.length < 10) {
-      setIsKeyMissing(true);
-    }
-  }, []);
 
   const handleAnalyze = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -39,50 +34,6 @@ const AppContent: React.FC = () => {
       setStatus(AppStatus.ERROR);
     }
   }, [ticker]);
-
-  if (isKeyMissing) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 selection:bg-rose-500/30">
-        <div className="max-w-xl w-full bg-slate-900 border border-slate-800 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 via-amber-500 to-rose-500 animate-pulse"></div>
-          
-          <div className="w-20 h-20 bg-rose-500/10 rounded-3xl flex items-center justify-center mb-8 border border-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.1)]">
-            <i className="fa-solid fa-triangle-exclamation text-rose-500 text-3xl"></i>
-          </div>
-          
-          <h2 className="text-2xl font-black text-white mb-4 uppercase italic tracking-tighter">Erro de Variável de Ambiente</h2>
-          <p className="text-slate-400 text-sm leading-relaxed mb-8 font-medium">
-            O terminal não conseguiu detectar a sua <span className="text-rose-400 font-bold">API KEY</span> do Gemini durante o processo de build. No Cloudflare Pages, variáveis não são lidas em tempo real sem um novo deploy.
-          </p>
-          
-          <div className="bg-slate-950 rounded-2xl p-6 mb-8 border border-slate-800">
-            <h4 className="text-cyan-400 text-[10px] font-black uppercase tracking-[0.2em] mb-4">Checklist de Solução:</h4>
-            <ul className="space-y-4">
-              <li className="flex gap-4">
-                <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white flex-none">1</span>
-                <p className="text-xs text-slate-300">Vá em <b>Settings</b> &gt; <b>Variables and Secrets</b>.</p>
-              </li>
-              <li className="flex gap-4">
-                <span className="w-6 h-6 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white flex-none">2</span>
-                <p className="text-xs text-slate-300">Certifique-se de que o nome é <code className="bg-slate-800 px-1.5 py-0.5 rounded text-cyan-300 font-bold">VITE_API_KEY</code>.</p>
-              </li>
-              <li className="flex gap-4">
-                <span className="w-6 h-6 rounded-lg bg-rose-500/20 flex items-center justify-center text-[10px] font-bold text-rose-400 flex-none ring-1 ring-rose-500/30">3</span>
-                <p className="text-xs text-rose-300 font-bold">Vá na aba "Deployments" e clique em "Retry deployment" no último build.</p>
-              </li>
-            </ul>
-          </div>
-
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full bg-white hover:bg-slate-100 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl hover:scale-[1.02] active:scale-[0.98] uppercase tracking-tighter"
-          >
-            Verificar Novamente
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (authLoading) {
     return (
@@ -135,7 +86,7 @@ const AppContent: React.FC = () => {
               <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
               <input 
                 type="text" 
-                placeholder="Digite o Ticker (AAPL, PETR4.SA, BTC...)"
+                placeholder="Ex: PETR4.SA, AAPL, BTC"
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value.toUpperCase())}
                 className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-cyan-500 transition-all font-bold placeholder:text-slate-700"
@@ -154,7 +105,7 @@ const AppContent: React.FC = () => {
               ) : (
                 <>
                   <i className="fa-solid fa-bolt text-lg"></i>
-                  ANALISAR QUANT
+                  ANALISAR AGORA
                 </>
               )}
             </button>
