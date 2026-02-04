@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+
+import React, { useState, useCallback, useEffect } from 'react';
 import { performStockAnalysis } from './services/geminiService';
 import { AnalysisResult, AppStatus } from './types';
 import StockChart from './components/StockChart';
@@ -6,8 +7,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthPage from './components/AuthPage';
 
 /**
- * QuantAI Predictor - v2.5.3
- * Interface corrigida para evitar erros de sintaxe no compilador esbuild do Cloudflare.
+ * QuantAI Predictor - v2.6.0
+ * Gestão de chaves API e interface principal.
  */
 
 const AppContent: React.FC = () => {
@@ -16,6 +17,28 @@ const AppContent: React.FC = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
+
+  // Verifica se a chave API está disponível ou se precisa ser selecionada
+  useEffect(() => {
+    const checkApiKey = async () => {
+      const keyExists = !!process.env.API_KEY;
+      if (!keyExists && (window as any).aistudio) {
+        const selected = await (window as any).aistudio.hasSelectedApiKey();
+        setHasApiKey(selected);
+      } else {
+        setHasApiKey(keyExists);
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    if ((window as any).aistudio) {
+      await (window as any).aistudio.openSelectKey();
+      setHasApiKey(true); // Assume sucesso conforme instruções
+    }
+  };
 
   const handleAnalyze = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -30,6 +53,9 @@ const AppContent: React.FC = () => {
       setStatus(AppStatus.SUCCESS);
     } catch (err: any) {
       console.error(err);
+      if (err.message?.includes("Requested entity was not found")) {
+        setHasApiKey(false);
+      }
       setError(err.message || 'Falha na análise quantitativa.');
       setStatus(AppStatus.ERROR);
     }
@@ -47,6 +73,33 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) return <AuthPage />;
+
+  // Se não houver chave API configurada, mostra tela de setup
+  if (!hasApiKey) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
+        <div className="max-w-md bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10 shadow-2xl">
+          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-500/20">
+            <i className="fa-solid fa-key text-amber-500 text-3xl"></i>
+          </div>
+          <h2 className="text-2xl font-black text-white mb-4 italic">Chave API Necessária</h2>
+          <p className="text-slate-400 text-sm leading-relaxed mb-8">
+            Para realizar previsões com o modelo <b>Gemini 3 Pro</b>, você precisa selecionar uma chave API válida.
+          </p>
+          <button 
+            onClick={handleSelectKey}
+            className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-amber-500/20 flex items-center justify-center gap-3"
+          >
+            <i className="fa-solid fa-plug"></i>
+            CONFIGURAR CHAVE API
+          </button>
+          <p className="mt-6 text-[10px] text-slate-600 uppercase tracking-widest font-bold">
+            Requer um projeto com faturamento ativo em <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-cyan-500 underline">ai.google.dev</a>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
@@ -219,7 +272,7 @@ const AppContent: React.FC = () => {
       </main>
       
       <footer className="max-w-7xl mx-auto p-8 text-center">
-        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-[0.5em]">QuantAI Engine v2.5 • Powered by Gemini 3 Pro</p>
+        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-[0.5em]">QuantAI Engine v2.6 • Powered by Gemini 3 Pro</p>
       </footer>
     </div>
   );

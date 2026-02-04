@@ -4,43 +4,44 @@ import { AnalysisResult } from "../types";
 
 /**
  * QuantAI Service - Quantitative Analysis Engine
- * Adheres to strict @google/genai SDK guidelines.
  */
 export const performStockAnalysis = async (ticker: string): Promise<AnalysisResult> => {
-  // Always use the process.env.API_KEY directly as required by instructions.
-  // The key is assumed to be pre-configured.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Conforme as diretrizes, a chave deve ser obtida de process.env.API_KEY
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("Chave API da Gemini não detectada. Por favor, clique em 'CONFIGURAR CHAVE API' na tela inicial para continuar.");
+  }
+
+  // Criamos uma nova instância a cada chamada para garantir que usamos a chave mais recente selecionada pelo usuário
+  const ai = new GoogleGenAI({ apiKey });
   
   try {
-    // Stage 1: Grounding with Google Search for up-to-date context
-    // Necessary for the high-reasoning 'gemini-3-pro-preview' model
+    // Fase 1: Busca de dados em tempo real (Grounding)
     const searchResponse = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Perform an in-depth financial analysis of the ticker ${ticker} right now. 
-      Focus on the last trade price, current daily volatility, and the top 3 latest news headlines influencing the asset.`,
+      contents: `Execute uma análise financeira detalhada para o ticker ${ticker} neste exato momento. 
+      Considere o preço atual de mercado, volume e as notícias mais relevantes das últimas 24 horas.`,
       config: {
         tools: [{ googleSearch: {} }],
       },
     });
 
-    // Access .text as a property, not a method
     const marketData = searchResponse.text;
-    
-    // Extract sources for UI transparency - required when using Google Search grounding
     const sources = searchResponse.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
-      title: chunk.web?.title || "Financial Report",
+      title: chunk.web?.title || "Relatório Financeiro",
       uri: chunk.web?.uri || "#"
     })) || [];
 
-    // Stage 2: JSON generation with embedded Python logic
+    // Fase 2: Geração de análise quantitativa estruturada
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Based on this real-time data: "${marketData}", generate a complete quantitative analysis for ${ticker}.
-      Format: JSON.
-      Requirements:
-      1. Predict price points for the next 7 days in 'forecast'.
-      2. Set 'confidenceScore' as a percentage (0-100).
-      3. In 'pythonLogic', write a functional Python snippet using Pandas/Prophet style math that models this prediction.`,
+      contents: `Utilizando estes dados de mercado: "${marketData}", realize uma previsão quantitativa para ${ticker}.
+      Retorne exclusivamente em JSON.
+      Inclua:
+      1. Previsão de preços para os próximos 7 dias.
+      2. Sentimento predominante (Bullish/Bearish).
+      3. Um snippet de código Python que simule a lógica matemática desta previsão.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -73,7 +74,6 @@ export const performStockAnalysis = async (ticker: string): Promise<AnalysisResu
       }
     });
 
-    // Access .text as a property, not a method
     const jsonStr = response.text || "{}";
     const result = JSON.parse(jsonStr.trim());
 
@@ -82,7 +82,10 @@ export const performStockAnalysis = async (ticker: string): Promise<AnalysisResu
       sources
     };
   } catch (error: any) {
-    console.error("Gemini Service Exception:", error);
-    throw new Error(error instanceof Error ? error.message : 'Quant analysis failed.');
+    console.error("Gemini Engine Error:", error);
+    if (error.message?.includes("API key")) {
+      throw new Error("Erro de Chave API: A chave selecionada pode ser inválida ou não pertencer a um projeto com faturamento ativo.");
+    }
+    throw new Error(error instanceof Error ? error.message : 'Falha ao processar análise quantitativa.');
   }
 };
