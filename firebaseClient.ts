@@ -2,43 +2,18 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
 
-/**
- * O Vite substitui essas strings estaticamente durante o build.
- * Não devemos atribuir import.meta.env a uma variável antes de acessar as propriedades,
- * pois isso quebra a substituição em alguns ambientes de produção.
- */
-const getEnvVar = (name: string): string | undefined => {
-  try {
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      // @ts-ignore
-      return import.meta.env[name];
-    }
-  } catch (e) {
-    return undefined;
-  }
-  return undefined;
-};
-
-// Acesso literal para garantir substituição pelo Vite
+// Environment variables are accessed via process.env in this environment to resolve TypeScript ImportMeta errors
 const firebaseConfig = {
-  // @ts-ignore
-  apiKey: typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_API_KEY : undefined,
-  // @ts-ignore
-  authDomain: typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_AUTH_DOMAIN : undefined,
-  // @ts-ignore
-  projectId: typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_PROJECT_ID : undefined,
-  // @ts-ignore
-  storageBucket: typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_STORAGE_BUCKET : undefined,
-  // @ts-ignore
-  messagingSenderId: typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID : undefined,
-  // @ts-ignore
-  appId: typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_FIREBASE_APP_ID : undefined
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID
 };
 
-export const isFirebaseConfigured = 
-  !!firebaseConfig.apiKey && 
-  firebaseConfig.apiKey.length > 20;
+// Verifica se a configuração mínima existe (API Key)
+export const isFirebaseConfigured = !!firebaseConfig.apiKey && (firebaseConfig.apiKey as string).length > 10;
 
 let auth: Auth | undefined;
 
@@ -47,8 +22,10 @@ if (isFirebaseConfigured) {
     const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
   } catch (error) {
-    console.error("Erro ao inicializar Firebase:", error);
+    console.error("Falha ao inicializar Firebase:", error);
   }
+} else {
+  console.warn("Firebase não configurado. As variáveis VITE_FIREBASE_* não foram detectadas.");
 }
 
 export { auth };
