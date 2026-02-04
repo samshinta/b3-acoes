@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult } from "../types";
 
@@ -6,43 +5,52 @@ import { AnalysisResult } from "../types";
  * QuantAI Service - Quantitative Analysis Engine with Python Integration
  */
 export const performStockAnalysis = async (ticker: string): Promise<AnalysisResult> => {
-  // Sempre pega a chave mais recente do process.env.API_KEY injetado pelo AI Studio
   const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
     throw new Error("Chave API da Gemini não detectada. Por favor, configure sua chave no botão 'Configurar Chave API'.");
   }
 
-  // Criar instância aqui garante que usamos a chave atualizada após a troca (sem race conditions)
+  // Criação da instância dentro da função para garantir o uso da chave mais recente do seletor
   const ai = new GoogleGenAI({ apiKey });
   
   try {
-    // Fase 1: Análise e Execução de Código Python
-    const analysisResponse = await ai.models.generateContent({
+    // Fase 1: Coleta de Dados Reais com Google Search
+    // Regra: ferramentas de grounding não podem ser combinadas com Code Execution na mesma chamada.
+    const searchResponse = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Execute uma análise técnica e quantitativa rigorosa para a ação ${ticker}.
-      1. Use o Google Search para obter dados de fechamento recentes e notícias do dia.
-      2. Use o PYTHON (Code Execution) para calcular a média móvel simples (SMA 7 e 14), o RSI (Índice de Força Relativa) e projetar a tendência de preço para os próximos 5 dias úteis com base em volatilidade calculada.
-      3. Retorne sua análise detalhada e o script Python utilizado.`,
+      contents: `Obtenha os dados de mercado mais recentes para ${ticker}. 
+      Inclua o preço atual, variação do dia e as 3 notícias mais relevantes de hoje.`,
       config: {
-        tools: [
-          { googleSearch: {} },
-          { codeExecution: {} } // Habilita o interpretador Python do Gemini
-        ],
+        tools: [{ googleSearch: {} }],
       },
     });
 
-    const contextData = analysisResponse.text;
-    const sources = analysisResponse.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+    const marketContext = searchResponse.text;
+    const sources = searchResponse.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
       title: chunk.web?.title || "Relatório de Mercado",
       uri: chunk.web?.uri || "#"
     })) || [];
 
-    // Fase 2: Estruturação dos dados para o Dashboard
+    // Fase 2: Execução de Código Python para Análise Quantitativa
+    // Aqui o Gemini escreve e roda código Python real para processar os dados obtidos.
+    const quantAnalysisResponse = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: `Com base nos dados coletados: "${marketContext}", realize uma análise financeira para ${ticker}.
+      1. Use o PYTHON (Code Execution) para calcular indicadores (SMA 7/21, RSI) e criar uma projeção de 5 dias baseada em volatilidade e tendência linear.
+      2. Forneça um resumo executivo com sentimento de mercado.`,
+      config: {
+        tools: [{ codeExecution: {} }]
+      },
+    });
+
+    const contextData = quantAnalysisResponse.text;
+
+    // Fase 3: Estruturação em JSON Final
     const structuredResponse = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Com base na análise quantitativa anterior: "${contextData}", extraia os dados para o formato JSON estrito.
-      No campo 'pythonLogic', descreva o algoritmo Python utilizado para os cálculos estatísticos.`,
+      contents: `Com base em toda a análise quantitativa anterior: "${contextData}", extraia os dados para este esquema JSON estrito.
+      Garanta que o campo 'pythonLogic' contenha o algoritmo Python utilizado para os cálculos.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -84,7 +92,6 @@ export const performStockAnalysis = async (ticker: string): Promise<AnalysisResu
     };
   } catch (error: any) {
     console.error("QuantAI Analysis Error:", error);
-    // Se a chave for inválida ou expirar
     if (error.message?.includes("Requested entity was not found")) {
         throw new Error("Chave API Inválida. Por favor, reconfigure sua chave API nas configurações.");
     }
